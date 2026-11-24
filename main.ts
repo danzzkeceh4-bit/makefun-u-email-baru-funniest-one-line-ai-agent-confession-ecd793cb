@@ -20,6 +20,13 @@ if (LINE.trim().length === 0 || LINE.includes("\n")) {
   throw new Error("entry must be a single non-blank line");
 }
 
+// Reject control characters (U+0000-U+001F, U+007F): the sealed scorer
+// reads entry.txt verbatim, so an invisible control char would corrupt
+// the line without changing how it looks in an editor.
+if (/[\u0000-\u001F\u007F]/.test(LINE)) {
+  throw new Error("entry must not contain control characters");
+}
+
 mkdirSync(OUTPUT_DIR, { recursive: true });
 writeFileSync(join(OUTPUT_DIR, "entry.txt"), LINE, "utf8");
 
@@ -29,4 +36,13 @@ writeFileSync(join(OUTPUT_DIR, "entry.txt"), LINE, "utf8");
 const written = readFileSync(join(OUTPUT_DIR, "entry.txt"), "utf8");
 if (written !== LINE) {
   throw new Error("entry.txt read-back mismatch");
+}
+
+// Byte-length guard: the sealed scorer expects exactly 106 bytes with
+// no trailing newline, so verify the on-disk size directly instead of
+// trusting the string comparison alone.
+if (Buffer.byteLength(written, "utf8") !== 106) {
+  throw new Error(
+    `entry.txt must be exactly 106 bytes, got ${Buffer.byteLength(written, "utf8")}`,
+  );
 }
